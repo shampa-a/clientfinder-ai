@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -24,12 +23,13 @@ export default function Navbar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
             <Sparkles size={23} />
           </div>
+
           <span className="text-xl font-bold tracking-tight text-slate-900">
             ClientFinder<span className="text-blue-600"> AI</span>
           </span>
         </Link>
 
-        {/* Center Navigation */}
+        {/* Desktop Navigation */}
         <nav className="hidden items-center gap-8 lg:flex">
           {navLinks.map((link) => (
             <Link
@@ -42,22 +42,24 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right Side Buttons */}
+        {/* Desktop Buttons */}
         <div className="hidden shrink-0 items-center gap-3 lg:flex">
+
           <Link
-            href="/sign-in"
+            href="/signin"
             className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
             Sign In
           </Link>
 
           <Link
-            href="/sign-up"
+            href="/signup"
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
           >
             Get Started
             <ArrowRight size={16} />
           </Link>
+
         </div>
 
         {/* Mobile Menu Button */}
@@ -75,6 +77,7 @@ export default function Navbar() {
       {/* Mobile Navigation */}
       {menuOpen && (
         <div className="border-t border-slate-200 bg-white px-4 py-5 shadow-lg lg:hidden">
+
           <nav className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <Link
@@ -88,9 +91,11 @@ export default function Navbar() {
             ))}
           </nav>
 
+          {/* Mobile Buttons */}
           <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4">
+
             <Link
-              href="/sign-in"
+              href="/signin"
               onClick={() => setMenuOpen(false)}
               className="rounded-lg px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
@@ -98,13 +103,14 @@ export default function Navbar() {
             </Link>
 
             <Link
-              href="/sign-up"
+              href="/signup"
               onClick={() => setMenuOpen(false)}
               className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
             >
               Get Started
               <ArrowRight size={16} />
             </Link>
+
           </div>
         </div>
       )}
