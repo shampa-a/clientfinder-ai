@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 import {
   Mail,
   Lock,
@@ -25,30 +26,35 @@ export default function SignInPage() {
     password: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+      const { data, error } = await authClient.signIn.email({
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        rememberMe: true,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Invalid email or password.");
+      if (error) {
+        setError(
+          error.message || "Invalid email or password."
+        );
+        return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      if (data) {
+        router.push("/dashboard");
+        router.refresh();
+      }
     } catch (err) {
+      console.error("Signin error:", err);
+
       setError(
         err instanceof Error
           ? err.message
@@ -186,6 +192,7 @@ export default function SignInPage() {
               <input
                 type="checkbox"
                 id="remember"
+                defaultChecked
                 className="w-4 h-4 accent-blue-600"
               />
 
@@ -203,9 +210,14 @@ export default function SignInPage() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl transition duration-200"
             >
-              {loading ? "Signing in..." : "Sign In"}
-
-              {!loading && <ArrowRight size={18} />}
+              {loading ? (
+                "Signing in..."
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight size={18} />
+                </>
+              )}
             </button>
 
           </form>
@@ -213,7 +225,7 @@ export default function SignInPage() {
           {/* Sign Up */}
           <div className="mt-8 text-center">
             <p className="text-slate-400 text-sm">
-              Dont have an account?{" "}
+             Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
                 className="text-blue-400 font-semibold hover:text-blue-300"
