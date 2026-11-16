@@ -3,59 +3,78 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 import {
   User,
   Mail,
   Lock,
   Eye,
   EyeOff,
-  ArrowRight,
-  Sparkles,
-  Search,
   Briefcase,
+  Loader2,
 } from "lucide-react";
 
-export default function SignUpPage() {
+type UserRole = "freelancer" | "agency" | "business";
+
+export default function SignupPage() {
   const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<UserRole>("freelancer");
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "freelancer",
-  });
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignup = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
-    setLoading(true);
     setError("");
+    setSuccess("");
+
+    if (name.trim().length < 2) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+      const { data, error } = await authClient.signUp.email({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Registration failed.");
+      if (error) {
+        setError(error.message || "Registration failed.");
+        return;
       }
 
-      router.push("/signin");
+      if (data) {
+        setSuccess("Account created successfully!");
+
+        setTimeout(() => {
+          router.push("/dashboard");
+          router.refresh();
+        }, 1000);
+      }
     } catch (err) {
+      console.error("Signup error:", err);
+
       setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
+        "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
@@ -63,229 +82,215 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
         {/* Logo */}
-        <Link
-          href="/"
-          className="flex items-center justify-center gap-2 mb-7"
-        >
-          <div className="bg-blue-600 p-2.5 rounded-xl">
-            <Search className="w-6 h-6 text-white" />
-          </div>
 
-          <span className="text-2xl font-bold text-white">
-            ClientFinder
-            <span className="text-blue-500"> AI</span>
-          </span>
-        </Link>
+        <div className="text-center mb-8">
 
-        {/* Signup Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+          <Link
+            href="/"
+            className="text-3xl font-bold text-blue-600"
+          >
+            ClientFinder AI
+          </Link>
 
-          {/* Heading */}
-          <div className="text-center mb-7">
+          <h1 className="text-2xl font-bold text-gray-900 mt-6">
+            Create Your Account
+          </h1>
 
-            <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full text-sm mb-4">
-              <Sparkles size={15} />
-              Start Growing Your Business
+          <p className="text-gray-500 mt-2">
+            Start finding potential clients today.
+          </p>
+
+        </div>
+
+        {/* Signup Form */}
+
+        <form onSubmit={handleSignup} className="space-y-5">
+
+          {/* Name */}
+
+          <div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name
+            </label>
+
+            <div className="relative">
+
+              <User className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+
+              <input
+                type="text"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg py-3 pl-11 pr-4 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
             </div>
 
-            <h1 className="text-3xl font-bold text-white mb-3">
-              Create Your Account
-            </h1>
+          </div>
 
-            <p className="text-slate-400 text-sm">
-              Find potential clients and grow your business with AI.
-            </p>
+          {/* Email */}
+
+          <div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+
+            <div className="relative">
+
+              <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg py-3 pl-11 pr-4 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+            </div>
 
           </div>
 
-          {/* Error */}
+          {/* Password */}
+
+          <div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+
+            <div className="relative">
+
+              <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Minimum 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                className="w-full border border-gray-300 rounded-lg py-3 pl-11 pr-12 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3.5 text-gray-400"
+              >
+                {showPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* Account Type */}
+
+          <div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Account Type
+            </label>
+
+            <div className="relative">
+
+              <Briefcase className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+
+              <select
+                value={role}
+                onChange={(e) =>
+                  setRole(e.target.value as UserRole)
+                }
+                className="w-full border border-gray-300 rounded-lg py-3 pl-11 pr-4 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+
+                <option value="freelancer">
+                  Freelancer
+                </option>
+
+                <option value="agency">
+                  Agency
+                </option>
+
+                <option value="business">
+                  Business
+                </option>
+
+              </select>
+
+            </div>
+
+          </div>
+
+          {/* Error Message */}
+
           {error && (
-            <div className="mb-5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
               {error}
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Success Message */}
 
-            {/* Full Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Full Name
-              </label>
-
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      name: e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
+          {success && (
+            <div className="bg-green-50 text-green-600 text-sm p-3 rounded-lg">
+              {success}
             </div>
+          )}
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
-              </label>
+          {/* Submit */}
 
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
 
-                <input
-                  type="email"
-                  required
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      email: e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={20} />
+                Creating Account...
+              </>
+            ) : (
+              "Create Account"
+            )}
 
-            {/* Account Type */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                I am a
-              </label>
+          </button>
 
-              <div className="relative">
-                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+        </form>
 
-                <select
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      role: e.target.value,
-                    })
-                  }
-                  className="w-full appearance-none bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white outline-none focus:border-blue-500"
-                >
-                  <option value="freelancer">Freelancer</option>
-                  <option value="agency">Agency</option>
-                  <option value="business">Business Owner</option>
-                </select>
-              </div>
-            </div>
+        {/* Login Link */}
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
+        <p className="text-center text-sm text-gray-500 mt-6">
 
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+          Already have an account?{" "}
 
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  placeholder="Minimum 8 characters"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      password: e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-12 text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
+          <Link
+            href="/signin"
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            Sign In
+          </Link>
 
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} />
-                  ) : (
-                    <Eye size={20} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Terms */}
-            <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                id="terms"
-                required
-                className="mt-1 w-4 h-4 accent-blue-600"
-              />
-
-              <label
-                htmlFor="terms"
-                className="text-sm text-slate-400"
-              >
-                I agree to the{" "}
-                <Link href="/terms" className="text-blue-400 hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-blue-400 hover:underline">
-                  Privacy Policy
-                </Link>.
-              </label>
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl transition"
-            >
-              {loading ? "Creating Account..." : "Create Account"}
-
-              {!loading && <ArrowRight size={18} />}
-            </button>
-
-          </form>
-
-          {/* Sign In */}
-          <div className="mt-7 text-center">
-            <p className="text-slate-400 text-sm">
-              Already have an account?{" "}
-              <Link
-                href="/signin"
-                className="text-blue-400 font-semibold hover:text-blue-300"
-              >
-                Sign In
-              </Link>
-            </p>
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-7">
-          © 2026 ClientFinder AI. All rights reserved.
         </p>
 
       </div>
+
     </div>
   );
 }
