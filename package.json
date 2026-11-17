@@ -13,10 +13,11 @@
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.7.25",
     "jose": "^6.2.17",
-    "lucide-react": "^1.73.0",
+    "lucide-react": "^1.74.0",
     "mongodb": "^7.9.0",
     "mongoose": "^9.12.1",
     "next": "16.4.6",
+    "openai": "^7.57.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
