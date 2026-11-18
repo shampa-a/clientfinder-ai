@@ -1,52 +1,38 @@
-import mongoose from "mongoose";
+import { MongoClient, Db } from "mongodb";
 
-// Get MongoDB connection string
-const MONGODB_URI: string = process.env.MONGODB_URI ?? "";
+const uri = process.env.MONGODB_URL;
 
-// Validate connection string
-if (!MONGODB_URI) {
-  throw new Error(
-    "Please define MONGODB_URI in your .env.local file"
-  );
+if (!uri) {
+  throw new Error("MONGODB_URL is not defined in environment variables");
 }
 
-// Global cache interface
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
-}
+const dbName = "clientfinder-ai";
 
-// Declare global cache
-declare global {
-  var mongooseCache: MongooseCache | undefined;
-}
-
-// Initialize cache
-const cached: MongooseCache = global.mongooseCache || {
-  conn: null,
-  promise: null,
+const globalForMongo = globalThis as typeof globalThis & {
+  mongoClient?: MongoClient;
+  mongoClientPromise?: Promise<MongoClient>;
 };
 
-global.mongooseCache = cached;
+// Reuse the existing MongoDB client
+const client =
+  globalForMongo.mongoClient ?? new MongoClient(uri);
 
-// Connect to MongoDB
-async function connectDB(): Promise<typeof mongoose> {
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI);
-  }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (error) {
-    cached.promise = null;
-    throw error;
-  }
-
-  return cached.conn;
+if (!globalForMongo.mongoClient) {
+  globalForMongo.mongoClient = client;
 }
 
-export default connectDB;
+// Reuse the existing connection promise
+const clientPromise =
+  globalForMongo.mongoClientPromise ?? client.connect();
+
+if (!globalForMongo.mongoClientPromise) {
+  globalForMongo.mongoClientPromise = clientPromise;
+}
+
+// Get database
+export async function getDb(): Promise<Db> {
+  const connectedClient = await clientPromise;
+  return connectedClient.db(dbName);
+}
+
+export { client, clientPromise };

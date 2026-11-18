@@ -2,15 +2,13 @@
 
 import { useState } from "react";
 import {
-  Sparkles,
   Mail,
   MessageSquare,
   Copy,
   RefreshCw,
-  WandSparkles,
   Check,
-  Loader2,
   Send,
+  FileText,
 } from "lucide-react";
 
 type WritingType = "cold-email" | "follow-up" | "linkedin";
@@ -26,67 +24,135 @@ export default function AIWriterPage() {
   const [details, setDetails] = useState("");
 
   const [generatedText, setGeneratedText] = useState("");
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleGenerate = async () => {
+  const generateMessage = () => {
     if (!businessName.trim() || !service.trim()) {
-      alert("Please enter business name and your service.");
+      setError("Please enter Business Name and Your Service.");
       return;
     }
 
-    setLoading(true);
-    setGeneratedText("");
+    setError("");
 
-    try {
-      const response = await fetch("/api/ai-writer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          writingType,
-          businessName,
-          businessType,
-          service,
-          tone,
-          details,
-        }),
-      });
+    const business = businessName.trim();
+    const businessCategory = businessType.trim();
+    const offeredService = service.trim();
+    const additionalDetails = details.trim();
 
-      const data = await response.json();
+    const greeting =
+      tone === "Friendly" || tone === "Casual"
+        ? "Hi"
+        : "Hello";
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate content.");
-      }
+    const closing =
+      tone === "Formal"
+        ? "Kind regards,"
+        : tone === "Friendly" || tone === "Casual"
+          ? "Best,"
+          : "Best regards,";
 
-      setGeneratedText(data.content);
-    } catch (error) {
-      console.error(error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong."
-      );
-    } finally {
-      setLoading(false);
+    let message = "";
+
+    if (writingType === "cold-email") {
+      message = `Subject: Helping ${business} Improve Its Online Presence
+
+${greeting} ${business} Team,
+
+I hope you are doing well.
+
+My name is [Your Name], and I provide ${offeredService} services.
+
+I came across ${business}${
+        businessCategory ? `, a ${businessCategory.toLowerCase()}` : ""
+      }, and wanted to reach out to introduce my services.
+
+I believe I could help your business improve its online presence, attract more potential customers, and create a better experience for your audience.
+
+${
+  additionalDetails
+    ? additionalDetails + "\n\n"
+    : ""
+}Would you be available for a short conversation to discuss how I could help?
+
+Thank you for your time.
+
+${closing}
+[Your Name]
+[Your Portfolio / Website]`;
     }
+
+    if (writingType === "follow-up") {
+      message = `Subject: Following Up on My Previous Message
+
+${greeting} ${business} Team,
+
+I hope everything is going well.
+
+I wanted to follow up on my previous message regarding my ${offeredService} services.
+
+I understand you may be busy, so I just wanted to check whether you had a chance to review my proposal.
+
+I would be happy to discuss how my services could support ${business} and help achieve your business goals.
+
+${
+  additionalDetails
+    ? additionalDetails + "\n\n"
+    : ""
+}Please let me know if you would be interested in discussing this further.
+
+Thank you for your time.
+
+${closing}
+[Your Name]`;
+    }
+
+    if (writingType === "linkedin") {
+      message = `Hello ${business} Team,
+
+I came across ${business} and wanted to connect.
+
+I provide ${offeredService} services and help businesses improve their online presence and reach more customers.
+
+${
+  additionalDetails
+    ? additionalDetails + "\n\n"
+    : ""
+}I would love to connect and explore whether there might be an opportunity to work together.
+
+Looking forward to connecting!
+
+Best,
+[Your Name]`;
+    }
+
+    setGeneratedText(message);
   };
 
   const handleCopy = async () => {
     if (!generatedText) return;
 
-    await navigator.clipboard.writeText(generatedText);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(generatedText);
+      setCopied(true);
 
-    setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Unable to copy. Please copy the message manually.");
+    }
+  };
+
+  const handleReset = () => {
+    setGeneratedText("");
+    setCopied(false);
+    setError("");
   };
 
   const writingOptions = [
     {
       id: "cold-email",
       title: "Cold Email",
-      description: "Reach potential clients",
+      description: "Contact potential clients",
       icon: Mail,
     },
     {
@@ -96,38 +162,36 @@ export default function AIWriterPage() {
       icon: MessageSquare,
     },
     {
-  id: "linkedin",
-  title: "LinkedIn Message",
-  description: "Connect with businesses",
-  icon: Send,
-},
+      id: "linkedin",
+      title: "LinkedIn Message",
+      description: "Connect with businesses",
+      icon: Send,
+    },
   ] as const;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-purple-100 p-3 text-purple-600">
-            <Sparkles size={25} />
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl bg-purple-100 p-3 text-purple-600">
+          <FileText size={25} />
+        </div>
 
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              AI Writer
-            </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Email & Message Templates
+          </h1>
 
-            <p className="text-sm text-gray-500">
-              Create personalized messages to convert prospects into clients.
-            </p>
-          </div>
+          <p className="text-sm text-gray-500">
+            Create professional client outreach messages without paid APIs.
+          </p>
         </div>
       </div>
 
       {/* Writing Type */}
       <div>
         <h2 className="mb-3 text-sm font-semibold text-gray-800">
-          Choose Content Type
+          Choose Message Type
         </h2>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -138,7 +202,11 @@ export default function AIWriterPage() {
             return (
               <button
                 key={option.id}
-                onClick={() => setWritingType(option.id)}
+                type="button"
+                onClick={() => {
+                  setWritingType(option.id);
+                  handleReset();
+                }}
                 className={`rounded-xl border p-5 text-left transition ${
                   active
                     ? "border-purple-500 bg-purple-50 ring-2 ring-purple-100"
@@ -172,12 +240,14 @@ export default function AIWriterPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Input Form */}
         <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <div className="mb-5 flex items-center gap-2">
-            <WandSparkles className="text-purple-600" size={20} />
-
+          <div className="mb-5">
             <h2 className="font-semibold text-gray-900">
               Message Details
             </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Enter details to personalize your message.
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -255,28 +325,25 @@ export default function AIWriterPage() {
                 rows={4}
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                placeholder="Describe your offer or mention any specific business problem you want to address..."
+                placeholder="Describe your offer or mention a specific business problem..."
                 className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
               />
             </div>
 
+            {error && (
+              <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                {error}
+              </p>
+            )}
+
             {/* Generate Button */}
             <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              onClick={generateMessage}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-700"
             >
-              {loading ? (
-                <>
-                  <Loader2 size={19} className="animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={19} />
-                  Generate with AI
-                </>
-              )}
+              <FileText size={19} />
+              Generate Message
             </button>
           </div>
         </div>
@@ -284,16 +351,19 @@ export default function AIWriterPage() {
         {/* Generated Content */}
         <div className="rounded-xl border border-gray-200 bg-white p-6">
           <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles size={20} className="text-purple-600" />
-
+            <div>
               <h2 className="font-semibold text-gray-900">
-                Generated Content
+                Message Preview
               </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Review and copy your message.
+              </p>
             </div>
 
             {generatedText && (
               <button
+                type="button"
                 onClick={handleCopy}
                 className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
               >
@@ -310,27 +380,27 @@ export default function AIWriterPage() {
           ) : (
             <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 px-6 text-center">
               <div className="mb-4 rounded-full bg-purple-100 p-5">
-                <Sparkles size={30} className="text-purple-600" />
+                <FileText size={30} className="text-purple-600" />
               </div>
 
               <h3 className="font-semibold text-gray-800">
-                Your content will appear here
+                Your message will appear here
               </h3>
 
               <p className="mt-2 max-w-xs text-sm text-gray-500">
-                Fill in the business details and click Generate with AI.
+                Fill in the business details and click Generate Message.
               </p>
             </div>
           )}
 
           {generatedText && (
             <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-purple-200 px-4 py-3 text-sm font-medium text-purple-700 hover:bg-purple-50 disabled:opacity-60"
+              type="button"
+              onClick={generateMessage}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-purple-200 px-4 py-3 text-sm font-medium text-purple-700 hover:bg-purple-50"
             >
               <RefreshCw size={16} />
-              Regenerate Content
+              Regenerate Message
             </button>
           )}
         </div>
@@ -339,17 +409,18 @@ export default function AIWriterPage() {
       {/* Information */}
       <div className="rounded-xl border border-purple-100 bg-purple-50 p-5">
         <div className="flex gap-3">
-          <Sparkles className="shrink-0 text-purple-600" size={22} />
+          <FileText className="shrink-0 text-purple-600" size={22} />
 
           <div>
             <h3 className="font-semibold text-purple-900">
-              AI-Powered Client Outreach
+              Free Client Outreach Templates
             </h3>
 
             <p className="mt-1 text-sm leading-6 text-purple-800">
-              Generate personalized outreach messages for your potential
-              clients. Always review the generated content before sending
-              it to a prospect.
+              Generate cold emails, follow-up emails, and LinkedIn
+              messages using built-in templates. No OpenAI API key,
+              external API, or additional API cost is required.
+              Review each message before sending it to a prospect.
             </p>
           </div>
         </div>

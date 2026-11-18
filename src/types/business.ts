@@ -1,14 +1,39 @@
-export type Business = {
-  placeId: string;
-  name: string;
-  address?: string;
+export type LeadStatus =
+  | "New"
+  | "Contacted"
+  | "Interested"
+  | "Converted";
+
+export type Lead = {
+  id: string;
+  userId?: string;
+
+  businessName: string;
+  contactName?: string;
+  email?: string;
   phone?: string;
   website?: string;
-  rating?: number;
+
+  country?: string;
+  city?: string;
+  category?: string;
+
+  status: LeadStatus;
+  notes?: string;
+
+  createdAt: string | Date;
+  updatedAt: string | Date;
 };
 
-export type BusinessDetails = {
+export type LeadInput = {
+  businessName: string;
+  contactName?: string;
+  email?: string;
   phone?: string;
   website?: string;
-  rating?: number | null;
+  country?: string;
+  city?: string;
+  category?: string;
+  status?: LeadStatus;
+  notes?: string;
 };

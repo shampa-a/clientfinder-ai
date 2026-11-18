@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-
-type LeadStatus =
-  | "New"
-  | "Contacted"
-  | "Interested"
-  | "Converted";
-
-type LeadInput = {
-  placeId: string;
-  name: string;
-  category?: string;
-  address?: string;
-  phone?: string;
-  website?: string;
-  rating?: number | null;
-};
+import type { LeadStatus } from "@/types/business";
 
 const allowedStatuses: LeadStatus[] = [
   "New",
@@ -25,10 +10,20 @@ const allowedStatuses: LeadStatus[] = [
   "Converted",
 ];
 
-// GET: Fetch user's saved leads
+const optionalFields = [
+  "contactName",
+  "email",
+  "phone",
+  "website",
+  "country",
+  "city",
+  "category",
+  "notes",
+] as const;
+
+// GET: Fetch user's leads
 export async function GET(request: NextRequest) {
   try {
-    // 1. Check authentication
     const session = await auth.api.getSession({
       headers: request.headers,
     });
@@ -40,25 +35,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 2. Connect to database
     const db = await getDb();
-
-    // 3. Read query parameters
     const { searchParams } = new URL(request.url);
 
-    const search = searchParams.get("search") || "";
+    const search = searchParams.get("search")?.trim() || "";
     const status = searchParams.get("status") || "";
 
-    // 4. Build query
     const query: Record<string, unknown> = {
       userId: session.user.id,
     };
 
-    if (search.trim()) {
+    if (search) {
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
+        { businessName: { $regex: search, $options: "i" } },
+        { contactName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { city: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
         { category: { $regex: search, $options: "i" } },
-        { address: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -66,14 +60,12 @@ export async function GET(request: NextRequest) {
       query.status = status;
     }
 
-    // 5. Fetch leads
     const leads = await db
       .collection("leads")
       .find(query)
       .sort({ createdAt: -1 })
       .toArray();
 
-    // 6. Return leads
     return NextResponse.json({
       success: true,
       total: leads.length,
@@ -93,10 +85,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Save a new lead
+// POST: Create a manual lead
 export async function POST(request: NextRequest) {
   try {
-    // 1. Check authentication
     const session = await auth.api.getSession({
       headers: request.headers,
     });
@@ -108,100 +99,135 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Read request body
-    const body = (await request.json()) as LeadInput;
+    const body: unknown = await request.json();
 
-    const {
-      placeId,
-      name,
-      category = "",
-      address = "",
-      phone = "",
-      website = "",
-      rating = null,
-    } = body;
-
-    // 3. Validate required fields
-    if (
-      typeof placeId !== "string" ||
-      !placeId.trim() ||
-      typeof name !== "string" ||
-      !name.trim()
-    ) {
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Place ID and business name are required.",
-        },
+        { success: false, error: "Invalid request body." },
         { status: 400 }
       );
     }
 
-    // 4. Connect to database
-    const db = await getDb();
+    const data = body as Record<string, unknown>;
 
+    if (
+      typeof data.businessName !== "string" ||
+      !data.businessName.trim()
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Business name is required." },
+        { status: 400 }
+      );
+    }
+
+    const businessName = data.businessName.trim();
+
+    if (businessName.length > 150) {
+      return NextResponse.json(
+        { success: false, error: "Business name is too long." },
+        { status: 400 }
+      );
+    }
+
+    const leadFields: Record<string, string> = {};
+
+    for (const field of optionalFields) {
+      const value = data[field];
+
+      if (value !== undefined && value !== null) {
+        if (typeof value !== "string") {
+          return NextResponse.json(
+            { success: false, error: `Invalid ${field}.` },
+            { status: 400 }
+          );
+        }
+
+        if (value.length > 2000) {
+          return NextResponse.json(
+            { success: false, error: `${field} is too long.` },
+            { status: 400 }
+          );
+        }
+
+        leadFields[field] = value.trim();
+      }
+    }
+
+    const email = leadFields.email;
+
+    if (
+      email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Invalid email address." },
+        { status: 400 }
+      );
+    }
+
+    const website = leadFields.website;
+
+    if (website) {
+      try {
+        const url = new URL(
+          /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(website)
+            ? website
+            : `https://${website}`
+        );
+
+        if (!["http:", "https:"].includes(url.protocol)) {
+          throw new Error("Invalid protocol");
+        }
+      } catch {
+        return NextResponse.json(
+          { success: false, error: "Invalid website URL." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const status = data.status ?? "New";
+
+    if (
+      typeof status !== "string" ||
+      !allowedStatuses.includes(status as LeadStatus)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Invalid lead status." },
+        { status: 400 }
+      );
+    }
+
+    const db = await getDb();
     const now = new Date();
 
-    // 5. Prepare lead document
     const lead = {
       userId: session.user.id,
-      placeId: placeId.trim(),
-      name: name.trim(),
-      category,
-      address,
-      phone,
-      website,
-      rating:
-        typeof rating === "number" && Number.isFinite(rating)
-          ? rating
-          : null,
-      status: "New" as LeadStatus,
+      businessName,
+      ...leadFields,
+      status: status as LeadStatus,
       createdAt: now,
       updatedAt: now,
     };
 
-    // 6. Prevent duplicate leads
-    const result = await db.collection("leads").updateOne(
-      {
-        userId: session.user.id,
-        placeId: lead.placeId,
-      },
-      {
-        $setOnInsert: lead,
-      },
-      {
-        upsert: true,
-      }
-    );
-
-    // 7. Find saved lead
-    const savedLead = await db.collection("leads").findOne({
-      userId: session.user.id,
-      placeId: lead.placeId,
-    });
+    const result = await db.collection("leads").insertOne(lead);
 
     return NextResponse.json(
       {
         success: true,
-        message: result.upsertedCount
-          ? "Lead saved successfully."
-          : "This lead is already saved.",
-        alreadySaved: result.upsertedCount === 0,
-        lead: savedLead
-          ? {
-              ...savedLead,
-              id: savedLead._id.toString(),
-              _id: undefined,
-            }
-          : null,
+        message: "Lead created successfully.",
+        lead: {
+          ...lead,
+          id: result.insertedId.toString(),
+        },
       },
-      { status: result.upsertedCount ? 201 : 200 }
+      { status: 201 }
     );
   } catch (error) {
     console.error("POST Leads Error:", error);
 
     return NextResponse.json(
-      { success: false, error: "Failed to save lead." },
+      { success: false, error: "Failed to create lead." },
       { status: 500 }
     );
   }

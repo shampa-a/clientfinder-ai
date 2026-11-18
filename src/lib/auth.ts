@@ -1,8 +1,7 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
-import { MongoClient } from "mongodb";
 
-const client = new MongoClient(process.env.MONGODB_URL as string);
+import { client } from "@/lib/mongodb";
 
 const db = client.db("clientfinder-ai");
 
@@ -22,7 +21,7 @@ export const auth = betterAuth({
         type: "string",
         required: true,
         defaultValue: "freelancer",
-        input: true,
+        input: false,
       },
     },
   },

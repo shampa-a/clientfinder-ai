@@ -54,7 +54,7 @@ export default function SignupPage() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
-        role,
+       
       });
 
       if (error) {
